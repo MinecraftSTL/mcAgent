@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "id": "mcagent",
+  "version": "${version}",
+  "name": "mcAgent",
+  "description": "AI语音助手Mod - 通过语音控制Minecraft",
+  "authors": ["MinecraftSTL"],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/mcagent/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "space.minecraftstl.mcagent.client.McagentDataGenerator"
+    ],
+    "client": [
+      "space.minecraftstl.mcagent.client.McagentClient"
+    ],
+    "main": [
+      "space.minecraftstl.mcagent.Mcagent"
+    ],
+    "modmenu": [
+      "space.minecraftstl.mcagent.client.config.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "mcagent.mixins.json",
+    {
+      "config": "mcagent.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
