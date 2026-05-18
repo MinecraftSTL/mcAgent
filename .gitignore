@@ -19,3 +19,28 @@ hs_err_pid*
 
 # Common working directory
 run
+bin/client/mcagent.client.mixins.json
+bin/client/assets/mcagent/lang/en_us.json
+bin/client/assets/mcagent/lang/zh_cn.json
+bin/client/space/minecraftstl/mcagent/client/McagentClient.class
+bin/client/space/minecraftstl/mcagent/client/McagentDataGenerator.class
+bin/client/space/minecraftstl/mcagent/client/audio/AudioRecorder.class
+bin/client/space/minecraftstl/mcagent/client/command/CommandExecutor.class
+bin/client/space/minecraftstl/mcagent/client/command/CommandFeedbackCapture.class
+bin/client/space/minecraftstl/mcagent/client/config/McagentConfig.class
+bin/client/space/minecraftstl/mcagent/client/config/ModMenuIntegration.class
+bin/client/space/minecraftstl/mcagent/client/llm/LlmClient.class
+bin/client/space/minecraftstl/mcagent/client/llm/LlmClient$QueuedMessage.class
+bin/client/space/minecraftstl/mcagent/client/llm/ToolHandler.class
+bin/client/space/minecraftstl/mcagent/client/llm/ToolHandler$PendingToolCall.class
+bin/client/space/minecraftstl/mcagent/client/llm/ToolHandler$ToolResult.class
+bin/client/space/minecraftstl/mcagent/client/stt/SpeechToText.class
+bin/client/space/minecraftstl/mcagent/client/ui/ConfigScreen.class
+bin/client/space/minecraftstl/mcagent/client/ui/ConfigScreen$ConfigEntry.class
+bin/client/space/minecraftstl/mcagent/client/ui/ConfigScreen$CycleButton.class
+bin/client/space/minecraftstl/mcagent/client/ui/HudRenderer.class
+bin/client/space/minecraftstl/mcagent/mixin/client/ChatHudMixin.class
+bin/main/fabric.mod.json
+bin/main/mcagent.mixins.json
+bin/main/assets/mcagent/icon.png
+bin/main/space/minecraftstl/mcagent/Mcagent.class
