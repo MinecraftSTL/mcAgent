@@ -36,6 +36,13 @@ public class McagentConfig {
     // 提示词
     public String systemPrompt = "你是我的Minecraft助手，帮我执行各种游戏操作。请用简体中文回复。";
 
+    // TTS 配置
+    public boolean ttsEnabled = false;
+    public String ttsApiUrl = "https://api.example.invalid:3000/v1/audio/speech";
+    public String ttsApiKey = "";
+    public String ttsModel = "kokoro";
+    public String ttsVoice = "alloy";
+
     // 音频参数
     public int silenceThreshold = 500;
     public int maxSilenceMs = 3000;
