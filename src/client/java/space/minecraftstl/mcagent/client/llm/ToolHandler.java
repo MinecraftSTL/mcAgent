@@ -6,6 +6,7 @@ import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.minecraftstl.mcagent.client.command.CommandExecutor;
+import space.minecraftstl.mcagent.client.tts.TextToSpeech;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,7 @@ public class ToolHandler {
             String content = contentEl.isJsonPrimitive() ? contentEl.getAsString() : contentEl.toString();
             if (!content.isBlank()) {
                 sendPlayerMessage("§b[AI]§r " + content);
+                TextToSpeech.speak(content);
             }
         }
 
@@ -91,6 +93,7 @@ public class ToolHandler {
             case "send_message_to_player" -> {
                 String msg = args.get("message").getAsString();
                 sendPlayerMessage("§b[AI]§r " + msg);
+                TextToSpeech.speak(msg);
                 yield new ToolResult(id, "消息已发送给玩家");
             }
             default -> new ToolResult(id, "未知工具: " + name);
