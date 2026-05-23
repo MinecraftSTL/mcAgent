@@ -19,7 +19,7 @@ public class LlmClient {
     private static final Gson GSON = new Gson();
     private final List<JsonObject> conversationHistory = new ArrayList<>();
 
-    private volatile boolean processing = false;
+    private final java.util.concurrent.atomic.AtomicBoolean processing = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final ConcurrentLinkedQueue<QueuedMessage> messageQueue = new ConcurrentLinkedQueue<>();
 
     public record QueuedMessage(String type, String textContent, byte[] audioData) {}
@@ -118,11 +118,18 @@ public class LlmClient {
     }
 
     public boolean isProcessing() {
-        return processing;
+        return processing.get();
     }
 
-    public void setProcessing(boolean processing) {
-        this.processing = processing;
+    public void setProcessing(boolean value) {
+        this.processing.set(value);
+    }
+
+    /**
+     * Atomically try to set processing to true. Returns true if successful (was false before).
+     */
+    public boolean tryStartProcessing() {
+        return processing.compareAndSet(false, true);
     }
 
     public void queueUserMessage(String message) {

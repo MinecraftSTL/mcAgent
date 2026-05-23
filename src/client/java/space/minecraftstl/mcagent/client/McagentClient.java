@@ -61,11 +61,10 @@ public class McagentClient implements ClientModInitializer {
                             .executes(ctx -> {
                                 String text = StringArgumentType.getString(ctx, "message");
                                 Thread.startVirtualThread(() -> {
-                                    if (llmClient.isProcessing()) {
+                                    if (!llmClient.tryStartProcessing()) {
                                         llmClient.queueUserMessage(text);
                                         return;
                                     }
-                                    llmClient.setProcessing(true);
                                     hudRenderer.setStatus("⟳ AI思考中...");
                                     try {
                                         JsonObject response = llmClient.sendText(text);
@@ -238,7 +237,7 @@ public class McagentClient implements ClientModInitializer {
         Thread.startVirtualThread(() -> {
             McagentConfig cfg = McagentConfig.get();
 
-            if (llmClient.isProcessing()) {
+            if (!llmClient.tryStartProcessing()) {
                 if ("direct_audio".equals(cfg.voiceMode)) {
                     llmClient.queueAudio(wav);
                     LOGGER.info("[mcAgent] AI处理中，音频已排队");
@@ -256,7 +255,6 @@ public class McagentClient implements ClientModInitializer {
                 hudRenderer.setStatus(toggleActive ? "● 录音中..." : (recorder.isBackgroundRecording() ? "◉ 监听中" : null));
                 return;
             }
-            llmClient.setProcessing(true);
             try {
                 JsonObject response;
                 if ("direct_audio".equals(cfg.voiceMode)) {

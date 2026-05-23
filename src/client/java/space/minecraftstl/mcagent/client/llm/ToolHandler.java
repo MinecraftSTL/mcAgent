@@ -42,18 +42,24 @@ public class ToolHandler {
             finishReason = choice.get("finish_reason").getAsString();
         }
 
+        // handle tool calls check
+        boolean hasToolCalls = "tool_calls".equals(finishReason) || message.has("tool_calls");
+
         // handle content (text response)
         if (message.has("content") && !message.get("content").isJsonNull()) {
             var contentEl = message.get("content");
             String content = contentEl.isJsonPrimitive() ? contentEl.getAsString() : contentEl.toString();
             if (!content.isBlank()) {
                 sendPlayerMessage("§b[AI]§r " + content);
-                TextToSpeech.speak(content);
+                // Only TTS for pure text responses (no tool calls)
+                if (!hasToolCalls) {
+                    TextToSpeech.speak(content);
+                }
             }
         }
 
         // handle tool calls - batch all results together
-        if ("tool_calls".equals(finishReason) || message.has("tool_calls")) {
+        if (hasToolCalls) {
             JsonArray toolCalls = message.getAsJsonArray("tool_calls");
             if (toolCalls != null) {
                 List<ToolResult> results = new ArrayList<>();
