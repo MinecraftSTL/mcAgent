@@ -40,8 +40,6 @@ public class LlmClient {
                - 球形: {"shape": "sphere", "center_x": 0, "center_y": 64, "center_z": 0, "radius": 10}
                - 长方体: {"shape": "box", "x1": -5, "y1": 60, "z1": -5, "x2": 5, "y2": 70, "z2": 5}
                返回范围内所有实体的UUID、类型、坐标，以及自定义显示名（如果有）。从客户端已加载的实体中查询。
-            4. get_entity_info - 获取指定UUID实体的全部客户端可见信息。参数: {"uuid": "实体UUID字符串"}
-               返回实体的详细属性，包括类型、位置、速度、朝向、生命值、装备、状态等。
 
             消息格式说明：
             - 玩家状态用 <player_context> 标签包裹
@@ -137,20 +135,6 @@ public class LlmClient {
                           "z2": {"type": "number", "description": "长方体对角点2的Z坐标(box时必填)"}
                         },
                         "required": ["shape"]
-                      }
-                    }
-                  },
-                  {
-                    "type": "function",
-                    "function": {
-                      "name": "get_entity_info",
-                      "description": "获取指定UUID实体的全部客户端可见信息，包括类型、位置、速度、朝向、生命值、装备、状态标志等",
-                      "parameters": {
-                        "type": "object",
-                        "properties": {
-                          "uuid": {"type": "string", "description": "实体的UUID字符串"}
-                        },
-                        "required": ["uuid"]
                       }
                     }
                   }

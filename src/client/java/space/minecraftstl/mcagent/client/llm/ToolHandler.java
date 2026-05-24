@@ -6,15 +6,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.entity.mob.MobEntity;
-import net.minecraft.entity.passive.TameableEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.projectile.ProjectileEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
@@ -30,7 +21,6 @@ import space.minecraftstl.mcagent.client.tts.TextToSpeech;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class ToolHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger("mcagent");
@@ -122,10 +112,6 @@ public class ToolHandler {
             }
             case "get_entities_in_range" -> {
                 yield new ToolResult(id, getEntitiesInRange(args));
-            }
-            case "get_entity_info" -> {
-                String uuid = args.get("uuid").getAsString();
-                yield new ToolResult(id, getEntityInfo(uuid));
             }
             default -> new ToolResult(id, "未知工具: " + name);
         };
@@ -242,141 +228,6 @@ public class ToolHandler {
             result.add(obj);
         }
         return result.isEmpty() ? "范围内没有找到实体" : result.toString();
-    }
-
-    private String getEntityInfo(String uuidStr) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientWorld world = mc.world;
-        if (world == null) return "无法获取: 世界未加载";
-
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(uuidStr);
-        } catch (IllegalArgumentException e) {
-            return "参数错误: 无效的UUID格式";
-        }
-
-        Entity entity = null;
-        for (Entity e : world.getEntities()) {
-            if (e.getUuid().equals(uuid)) {
-                entity = e;
-                break;
-            }
-        }
-        if (entity == null) return "未找到该UUID的实体（可能未加载或已不存在）";
-
-        JsonObject info = new JsonObject();
-        info.addProperty("uuid", entity.getUuidAsString());
-        info.addProperty("type", Registries.ENTITY_TYPE.getId(entity.getType()).toString());
-        if (entity.hasCustomName()) {
-            info.addProperty("custom_name", entity.getCustomName().getString());
-        }
-        info.addProperty("display_name", entity.getName().getString());
-
-        // Position & motion
-        JsonArray pos = new JsonArray();
-        pos.add(Math.round(entity.getX() * 100.0) / 100.0);
-        pos.add(Math.round(entity.getY() * 100.0) / 100.0);
-        pos.add(Math.round(entity.getZ() * 100.0) / 100.0);
-        info.add("position", pos);
-
-        JsonArray velocity = new JsonArray();
-        velocity.add(Math.round(entity.getVelocity().x * 1000.0) / 1000.0);
-        velocity.add(Math.round(entity.getVelocity().y * 1000.0) / 1000.0);
-        velocity.add(Math.round(entity.getVelocity().z * 1000.0) / 1000.0);
-        info.add("velocity", velocity);
-
-        info.addProperty("yaw", Math.round(entity.getYaw() * 10.0) / 10.0);
-        info.addProperty("pitch", Math.round(entity.getPitch() * 10.0) / 10.0);
-
-        // State flags
-        info.addProperty("on_ground", entity.isOnGround());
-        info.addProperty("is_sneaking", entity.isSneaking());
-        info.addProperty("is_sprinting", entity.isSprinting());
-        info.addProperty("is_swimming", entity.isSwimming());
-        info.addProperty("is_on_fire", entity.isOnFire());
-        info.addProperty("is_invisible", entity.isInvisible());
-        info.addProperty("is_glowing", entity.isGlowing());
-        info.addProperty("is_silent", entity.isSilent());
-        info.addProperty("has_no_gravity", entity.hasNoGravity());
-
-        // Passengers & vehicle
-        if (entity.hasVehicle()) {
-            Entity vehicle = entity.getVehicle();
-            info.addProperty("vehicle_uuid", vehicle.getUuidAsString());
-            info.addProperty("vehicle_type", Registries.ENTITY_TYPE.getId(vehicle.getType()).toString());
-        }
-        if (!entity.getPassengerList().isEmpty()) {
-            JsonArray passengers = new JsonArray();
-            for (Entity p : entity.getPassengerList()) {
-                JsonObject pObj = new JsonObject();
-                pObj.addProperty("uuid", p.getUuidAsString());
-                pObj.addProperty("type", Registries.ENTITY_TYPE.getId(p.getType()).toString());
-                passengers.add(pObj);
-            }
-            info.add("passengers", passengers);
-        }
-
-        // LivingEntity specific
-        if (entity instanceof LivingEntity living) {
-            info.addProperty("health", Math.round(living.getHealth() * 10.0) / 10.0);
-            info.addProperty("max_health", Math.round(living.getMaxHealth() * 10.0) / 10.0);
-            info.addProperty("absorption", Math.round(living.getAbsorptionAmount() * 10.0) / 10.0);
-            info.addProperty("is_baby", living.isBaby());
-
-            // Armor value
-            info.addProperty("armor", living.getArmor());
-
-            // Equipment
-            JsonObject equipment = new JsonObject();
-            for (EquipmentSlot slot : EquipmentSlot.values()) {
-                ItemStack stack = living.getEquippedStack(slot);
-                if (!stack.isEmpty()) {
-                    equipment.addProperty(slot.getName(), stack.getItem().toString() + (stack.getCount() > 1 ? " x" + stack.getCount() : ""));
-                }
-            }
-            if (equipment.size() > 0) info.add("equipment", equipment);
-
-            // Active effects
-            if (!living.getActiveStatusEffects().isEmpty()) {
-                JsonArray effects = new JsonArray();
-                for (Map.Entry<?, StatusEffectInstance> entry : living.getActiveStatusEffects().entrySet()) {
-                    StatusEffectInstance effect = entry.getValue();
-                    JsonObject eff = new JsonObject();
-                    eff.addProperty("id", effect.getEffectType().getIdAsString());
-                    eff.addProperty("amplifier", effect.getAmplifier());
-                    eff.addProperty("duration", effect.getDuration());
-                    effects.add(eff);
-                }
-                info.add("effects", effects);
-            }
-        }
-
-        // MobEntity specific
-        if (entity instanceof MobEntity mob) {
-            if (mob.getTarget() != null) {
-                info.addProperty("target_uuid", mob.getTarget().getUuidAsString());
-            }
-        }
-
-        // TameableEntity specific
-        if (entity instanceof TameableEntity tameable) {
-            info.addProperty("is_tamed", tameable.isTamed());
-            if (tameable.getOwner() != null) {
-                info.addProperty("owner_uuid", tameable.getOwner().getUuidAsString());
-            }
-            info.addProperty("is_sitting", tameable.isSitting());
-        }
-
-        // PlayerEntity specific
-        if (entity instanceof PlayerEntity player) {
-            info.addProperty("experience_level", player.experienceLevel);
-            info.addProperty("total_experience", player.totalExperience);
-            info.addProperty("food_level", player.getHungerManager().getFoodLevel());
-            info.addProperty("saturation", player.getHungerManager().getSaturationLevel());
-        }
-
-        return info.toString();
     }
 
     @SuppressWarnings("unchecked")
