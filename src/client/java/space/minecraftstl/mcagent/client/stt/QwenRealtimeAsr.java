@@ -124,6 +124,9 @@ public class QwenRealtimeAsr {
                                     transcript.append(t);
                                     LOGGER.info("[mcAgent] ASR transcript chunk: {}", t);
                                 }
+                                // Transcription completed means we have the result, signal finish
+                                resultText.set(transcript.toString());
+                                finishLatch.countDown();
                                 break;
 
                             case "response.audio_transcript.delta":
@@ -218,6 +221,10 @@ public class QwenRealtimeAsr {
             // Wait for transcription result
             if (!finishLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                 LOGGER.warn("[mcAgent] ASR timeout waiting for transcription result");
+                // Fallback: if transcript was populated but finish event never came
+                if (transcript.length() > 0) {
+                    resultText.set(transcript.toString());
+                }
             }
 
             // Close WebSocket
