@@ -45,16 +45,13 @@ public class ToolHandler {
         // handle tool calls check
         boolean hasToolCalls = "tool_calls".equals(finishReason) || message.has("tool_calls");
 
-        // handle content (text response)
-        if (message.has("content") && !message.get("content").isJsonNull()) {
+        // handle content (text response) - only display when no tool calls (final answer)
+        if (!hasToolCalls && message.has("content") && !message.get("content").isJsonNull()) {
             var contentEl = message.get("content");
             String content = contentEl.isJsonPrimitive() ? contentEl.getAsString() : contentEl.toString();
             if (!content.isBlank()) {
                 sendPlayerMessage("§b[AI]§r " + content);
-                // Only TTS for pure text responses (no tool calls)
-                if (!hasToolCalls) {
-                    TextToSpeech.speak(content);
-                }
+                TextToSpeech.speak(content);
             }
         }
 
@@ -95,12 +92,6 @@ public class ToolHandler {
                     result.append(feedback).append("\n");
                 }
                 yield new ToolResult(id, result.toString().trim());
-            }
-            case "send_message_to_player" -> {
-                String msg = args.get("message").getAsString();
-                sendPlayerMessage("§b[AI]§r " + msg);
-                TextToSpeech.speak(msg);
-                yield new ToolResult(id, "消息已发送给玩家");
             }
             default -> new ToolResult(id, "未知工具: " + name);
         };

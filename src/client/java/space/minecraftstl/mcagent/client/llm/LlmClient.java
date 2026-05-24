@@ -32,7 +32,6 @@ public class LlmClient {
             1. execute_commands - 执行Minecraft命令列表。参数: {"commands": ["command1", "command2"]}
                命令不需要带 / 前缀。所有命令会依次执行，结果会汇总后一起返回。
                没有输出的命令会显示"已执行(无返回值)"，执行失败会显示错误信息。
-            2. send_message_to_player - 向当前客户端玩家本地发送聊天消息（不会发送到服务器，其他玩家看不到）。参数: {"message": "消息内容"}
 
             消息格式说明：
             - 玩家状态用 <player_context> 标签包裹
@@ -40,14 +39,14 @@ public class LlmClient {
 
             规则：
             1. 命令不带 / 前缀
-            2. 以下为风险指令，必须先用 send_message_to_player 向玩家说明你要执行的具体命令并请求确认，等玩家下一次语音回复确认后再执行：
+            2. 以下为风险指令，必须先在回复中向玩家说明你要执行的具体命令并请求确认，等玩家下一次语音回复确认后再执行：
                - 不限类型和范围的kill（如 kill @e）、涉及多个玩家的kill
                - 大范围的fill或clone
                - 不限类型的clear（如 clear @a）
                - 放置命令方块或命令方块矿车（setblock/give command_block等）
             3. 你会收到命令执行的反馈结果（包括错误信息），据此判断是否需要修复或后续操作
             4. 玩家状态信息（玩家名、位置、朝向、维度、时间、游戏模式）会自动附带在每次请求中
-            5. 如需向玩家说话/提问，使用 send_message_to_player 工具（消息仅本地显示）
+            5. 你的文本回复（content）会直接显示给玩家
             6. 一次可以调用多个工具，所有工具结果会汇总后一起返回
             7. 玩家消息如标注source="stt"，表示由语音转文字转换，可能有同音字/谐音错误，请根据上下文纠错理解
             8. 如果工具结果和玩家新消息同时出现，说明玩家在你执行工具期间发送了新指令，请同时处理工具结果和新指令
@@ -93,23 +92,6 @@ public class LlmClient {
                           }
                         },
                         "required": ["commands"]
-                      }
-                    }
-                  },
-                  {
-                    "type": "function",
-                    "function": {
-                      "name": "send_message_to_player",
-                      "description": "向玩家发送聊天消息",
-                      "parameters": {
-                        "type": "object",
-                        "properties": {
-                          "message": {
-                            "type": "string",
-                            "description": "要发送的消息"
-                          }
-                        },
-                        "required": ["message"]
                       }
                     }
                   }
