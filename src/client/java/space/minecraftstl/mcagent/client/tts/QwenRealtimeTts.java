@@ -91,7 +91,7 @@ public class QwenRealtimeTts {
             AudioFormat fmt = new AudioFormat(sampleRate, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
             line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(fmt); line.start();
+            line.open(fmt, sampleRate * 2); line.start();
             decoderThread = new Thread(() -> {
                 while (!stopped.get()) {
                     String b = b64Buf.poll();
@@ -102,9 +102,12 @@ public class QwenRealtimeTts {
             playerThread = new Thread(() -> {
                 while (!stopped.get()) {
                     byte[] raw = rawBuf.poll();
-                    if (raw != null) { int w=0; while(w<raw.length) w+=line.write(raw,w,raw.length-w);
-                        try{Thread.sleep(Math.max(0,raw.length/(sampleRate*2/1000)-10));}catch(InterruptedException ignored){}
-                    } else try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+                    if (raw != null) {
+                        int w = 0;
+                        while (w < raw.length) w += line.write(raw, w, raw.length - w);
+                    } else {
+                        try { Thread.sleep(5); } catch (InterruptedException ignored) {}
+                    }
                 }
             });
             decoderThread.start(); playerThread.start();
