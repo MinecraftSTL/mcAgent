@@ -9,15 +9,26 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 public class SpeechToText {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
+    private static final Pattern QWEN_PATTERN = Pattern.compile("^[Qq]wen3(\\.[0-9])?(-.*)?$|^[Qq]wen3-asr.*$");
+
+    public static boolean isQwenModel(String model) {
+        return model != null && QWEN_PATTERN.matcher(model).matches();
+    }
 
     public static String transcribe(byte[] wavData) {
         McagentConfig cfg = McagentConfig.get();
         if ("local".equals(cfg.sttType)) {
             return transcribeLocal(wavData, cfg);
         }
+        if (isQwenModel(cfg.sttModel)) {
+            // Qwen模型走WebSocket实时ASR（直连DashScope，不走中转站）
+            return QwenRealtimeAsr.transcribeBlocking(wavData, cfg);
+        }
+        // 非Qwen模型用OpenAI标准multipart格式
         return transcribeOnline(wavData, cfg);
     }
 
@@ -26,19 +37,16 @@ public class SpeechToText {
             String boundary = UUID.randomUUID().toString();
             ByteArrayOutputStream body = new ByteArrayOutputStream();
             String nl = "\r\n";
-            // file part
             body.write(("--" + boundary + nl).getBytes());
             body.write(("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"" + nl).getBytes());
             body.write(("Content-Type: audio/wav" + nl + nl).getBytes());
             body.write(wavData);
             body.write(nl.getBytes());
-            // model part
             body.write(("--" + boundary + nl).getBytes());
             body.write(("Content-Disposition: form-data; name=\"model\"" + nl + nl).getBytes());
             body.write(cfg.sttModel.getBytes());
             body.write(nl.getBytes());
             body.write(("--" + boundary + "--" + nl).getBytes());
-
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(cfg.sttApiUrl))
                     .header("Authorization", "Bearer " + cfg.sttApiKey)
@@ -46,7 +54,10 @@ public class SpeechToText {
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
                     .build();
             HttpResponse<String> resp = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
-            // parse {"text":"..."}
+            if (resp.statusCode() != 200) {
+                System.out.println("[mcAgent] STT请求失败: status=" + resp.statusCode() + " body=" + resp.body());
+                return "[STT错误: HTTP " + resp.statusCode() + "]";
+            }
             String respBody = resp.body();
             int idx = respBody.indexOf("\"text\"");
             if (idx >= 0) {
