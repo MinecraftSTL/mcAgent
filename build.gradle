@@ -124,6 +124,10 @@ sourceSets {
     }
 }
 
+test {
+    failOnNoDiscoveredTests = false
+}
+
 task runAsrTest(type: JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'AsrConnectionTest'

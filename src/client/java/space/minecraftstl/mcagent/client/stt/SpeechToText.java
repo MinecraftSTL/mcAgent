@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 public class SpeechToText {
     private static final HttpClient HTTP = HttpClient.newHttpClient();
-    private static final Pattern QWEN_PATTERN = Pattern.compile("^[Qq]wen3(\\.[0-9])?(-.*)?$");
+    private static final Pattern QWEN_PATTERN = Pattern.compile("^[Qq]wen3(\\.[0-9])?(-.*)?$|^[Qq]wen3-asr.*$");
 
     public static boolean isQwenModel(String model) {
         return model != null && QWEN_PATTERN.matcher(model).matches();
