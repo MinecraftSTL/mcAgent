@@ -23,6 +23,8 @@ public class QwenRealtimeTts {
     private static final Logger LOGGER = LoggerFactory.getLogger("mcagent");
     private static final QwenTtsRealtimeAudioFormat TTS_FORMAT = QwenTtsRealtimeAudioFormat.PCM_24000HZ_MONO_16BIT;
 
+    private static final long TTS_TIMEOUT_SECONDS = 60;
+
     public static void speakBlocking(String text, McagentConfig cfg) throws Exception {
         String model = cfg.ttsModel;
         String apiKey = cfg.ttsApiKey;
@@ -67,11 +69,15 @@ public class QwenRealtimeTts {
         // commit 模式：appendText + commit 触发响应生成
         tts.appendText(text);
         tts.commit();
-        // 等待 response.done（音频生成完毕）
-        responseDoneLatch.await();
+        // 等待 response.done（音频生成完毕），加超时防止永久hang
+        if (!responseDoneLatch.await(TTS_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS)) {
+            LOGGER.warn("[mcAgent] TTS response.done 等待超时");
+        }
         // 结束会话
         tts.finish();
-        sessionFinishLatch.await();
+        if (!sessionFinishLatch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+            LOGGER.warn("[mcAgent] TTS session.finished 等待超时");
+        }
         // 等待音频播放完成
         audioPlayer.waitForComplete();
         audioPlayer.shutdown();
@@ -96,30 +102,65 @@ public class QwenRealtimeTts {
                 while (!stopped.get()) {
                     String b = b64Buf.poll();
                     if (b != null) rawBuf.add(Base64.getDecoder().decode(b));
-                    else try { Thread.sleep(10); } catch (InterruptedException ignored) {}
+                    else try { Thread.sleep(10); } catch (InterruptedException ignored) { break; }
                 }
-            });
+            }, "mcagent-tts-decoder");
+            decoderThread.setDaemon(true);
             playerThread = new Thread(() -> {
                 while (!stopped.get()) {
                     byte[] raw = rawBuf.poll();
                     if (raw != null) {
-                        int w = 0;
-                        while (w < raw.length) w += line.write(raw, w, raw.length - w);
+                        try {
+                            int w = 0;
+                            while (w < raw.length && !stopped.get())
+                                w += line.write(raw, w, raw.length - w);
+                        } catch (Exception e) {
+                            // line被关闭时write会抛异常，正常退出
+                            break;
+                        }
                     } else {
-                        try { Thread.sleep(5); } catch (InterruptedException ignored) {}
+                        try { Thread.sleep(5); } catch (InterruptedException ignored) { break; }
                     }
                 }
-            });
+            }, "mcagent-tts-player");
+            playerThread.setDaemon(true);
             decoderThread.start(); playerThread.start();
         }
         void write(String b64) { b64Buf.add(b64); }
         void waitForComplete() throws InterruptedException {
-            while (!b64Buf.isEmpty()||!rawBuf.isEmpty()) Thread.sleep(50);
-            line.drain();
+            long deadline = System.currentTimeMillis() + 30_000; // 最多等30秒
+            while (!b64Buf.isEmpty() || !rawBuf.isEmpty()) {
+                if (System.currentTimeMillis() > deadline) {
+                    LOGGER.warn("[mcAgent] TTS waitForComplete 超时(buffer未清空)");
+                    break;
+                }
+                Thread.sleep(50);
+            }
+            // drain()可能永久阻塞（音频设备异常时），用单独线程+超时保护
+            if (!stopped.get() && line.isOpen()) {
+                Thread drainThread = new Thread(() -> {
+                    try { line.drain(); } catch (Exception ignored) {}
+                }, "mcagent-tts-drain");
+                drainThread.setDaemon(true);
+                drainThread.start();
+                drainThread.join(5000); // 最多等5秒drain完成
+                if (drainThread.isAlive()) {
+                    LOGGER.warn("[mcAgent] TTS line.drain() 超时，强制继续");
+                }
+            }
         }
         void shutdown() throws InterruptedException {
-            stopped.set(true); decoderThread.join(); playerThread.join();
-            if (line!=null&&line.isRunning()){line.drain();line.close();}
+            stopped.set(true);
+            // 先停止line，打断可能阻塞在line.write()的playerThread
+            if (line != null) {
+                try { line.stop(); } catch (Exception ignored) {}
+                try { line.close(); } catch (Exception ignored) {}
+            }
+            // 中断线程，确保sleep/wait能被唤醒
+            decoderThread.interrupt();
+            playerThread.interrupt();
+            decoderThread.join(3000);
+            playerThread.join(3000);
         }
     }
 }
