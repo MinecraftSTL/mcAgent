@@ -193,11 +193,12 @@ public class LlmClient {
         MinecraftClient mc = MinecraftClient.getInstance();
         ClientPlayerEntity player = mc.player;
         if (player == null || mc.world == null) return "";
-        return String.format("<player_context>\n{\"world\": {\"dimension\": \"%s\", \"time\": %d, \"min_y\": %d, \"max_y\": %d}, \"player\": {\"name\": \"%s\", \"position\": [%.2f, %.2f, %.2f], \"block_pos\": [%d, %d, %d], \"yaw\": %.1f, \"pitch\": %.1f, \"gamemode\": \"%s\"}}\n</player_context>",
+        return String.format("<player_context>\n{\"world\": {\"dimension\": \"%s\", \"time\": %d, \"min_y\": %d, \"max_y\": %d}, \"player\": {\"uuid\": \"%s\", \"name\": \"%s\", \"position\": [%.2f, %.2f, %.2f], \"block_pos\": [%d, %d, %d], \"yaw\": %.1f, \"pitch\": %.1f, \"gamemode\": \"%s\"}}\n</player_context>",
                 mc.world.getRegistryKey().getValue().toString(),
                 mc.world.getTimeOfDay(),
                 mc.world.getBottomY(),
                 mc.world.getTopYInclusive(),
+                player.getUuidAsString(),
                 player.getName().getString(),
                 player.getX(), player.getY(), player.getZ(),
                 player.getBlockPos().getX(), player.getBlockPos().getY(), player.getBlockPos().getZ(),
