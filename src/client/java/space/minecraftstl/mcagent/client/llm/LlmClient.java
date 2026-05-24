@@ -32,6 +32,9 @@ public class LlmClient {
             1. execute_commands - 执行Minecraft命令列表。参数: {"commands": ["command1", "command2"]}
                命令不需要带 / 前缀。所有命令会依次执行，结果会汇总后一起返回。
                没有输出的命令会显示"已执行(无返回值)"，执行失败会显示错误信息。
+            2. get_block_info - 获取指定坐标的方块信息（方块类型、方块状态属性、客户端可见NBT）。参数: {"x": 0, "y": 64, "z": 0}
+               返回该坐标的方块ID、状态属性和NBT数据（如果有）。如果坐标超出范围或区块未加载，会返回错误信息。
+               这是直接从客户端世界读取，不需要执行命令。
 
             消息格式说明：
             - 玩家状态用 <player_context> 标签包裹
@@ -44,7 +47,7 @@ public class LlmClient {
             4. 你的文本回复（content）会直接显示给玩家。只能输出纯文本，禁止使用任何 Markdown 或其他格式化写法。禁止出现标题、有序列表、无序列表、代码块、加粗、斜体、引用、分隔线、表格等格式。
             5. 一次可以调用多个工具，所有工具结果会汇总后一起返回。如果工具结果和玩家新消息同时出现，说明玩家在你执行工具期间发送了新指令，你需要同时处理工具结果和新指令。
             6. 玩家消息如标注 source="stt"，表示由语音转文字转换，可能有同音字、谐音字或识别错误，你应根据上下文纠错理解。
-            7. 不要使用 setblock 来探测或获取某个位置的方块信息，应使用 data get block 命令。
+            7. 不要使用 setblock 来探测或获取某个位置的方块信息，应优先使用 get_block_info 工具直接查询。
             8. 玩家发出要求后，到命令实际执行前，玩家可能已经移动或转向。“我脚下”“我头上”“我前面”“我旁边”“围着我”“朝我面前”这类表达，应以本次请求中的 <player_context> 为基准。需要位置或朝向基准的命令，优先根据 <player_context> 换算为绝对坐标，或固定位置、朝向后执行。多条相关命令如果应基于同一个位置或朝向，统一使用同一个 <player_context>，不要直接使用裸的 ~ 或 ^。
 
             命令示例：
@@ -87,6 +90,22 @@ public class LlmClient {
                           }
                         },
                         "required": ["commands"]
+                      }
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_block_info",
+                      "description": "获取指定坐标的方块信息，包括方块ID、状态属性和客户端可见的NBT数据",
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "x": {"type": "integer", "description": "方块X坐标"},
+                          "y": {"type": "integer", "description": "方块Y坐标"},
+                          "z": {"type": "integer", "description": "方块Z坐标"}
+                        },
+                        "required": ["x", "y", "z"]
                       }
                     }
                   }

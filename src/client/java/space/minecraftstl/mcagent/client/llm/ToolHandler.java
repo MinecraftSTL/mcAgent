@@ -1,8 +1,16 @@
 package space.minecraftstl.mcagent.client.llm;
 
 import com.google.gson.*;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.Registries;
+import net.minecraft.state.property.Property;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.border.WorldBorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.minecraftstl.mcagent.client.command.CommandExecutor;
@@ -10,6 +18,7 @@ import space.minecraftstl.mcagent.client.tts.TextToSpeech;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ToolHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger("mcagent");
@@ -93,8 +102,75 @@ public class ToolHandler {
                 }
                 yield new ToolResult(id, result.toString().trim());
             }
+            case "get_block_info" -> {
+                int x = args.get("x").getAsInt();
+                int y = args.get("y").getAsInt();
+                int z = args.get("z").getAsInt();
+                yield new ToolResult(id, getBlockInfo(x, y, z));
+            }
             default -> new ToolResult(id, "未知工具: " + name);
         };
+    }
+
+    private String getBlockInfo(int x, int y, int z) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientWorld world = mc.world;
+        if (world == null) {
+            return "无法获取: 世界未加载";
+        }
+
+        // Check world height bounds
+        if (y < world.getBottomY() || y > world.getTopYInclusive()) {
+            return String.format("无法获取: 坐标Y=%d超出世界高度范围 [%d, %d]", y, world.getBottomY(), world.getTopYInclusive());
+        }
+
+        BlockPos pos = new BlockPos(x, y, z);
+
+        // Check world border
+        WorldBorder border = world.getWorldBorder();
+        if (!border.contains(pos)) {
+            return "无法获取: 坐标超出世界边界";
+        }
+
+        // Check if chunk is loaded
+        if (!world.getChunkManager().isChunkLoaded(x >> 4, z >> 4)) {
+            return "无法获取: 该位置的区块未加载（超出客户端加载范围）";
+        }
+
+        BlockState state = world.getBlockState(pos);
+        StringBuilder sb = new StringBuilder();
+
+        // Block ID
+        String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
+        sb.append("block: ").append(blockId);
+
+        // Block state properties
+        if (!state.getEntries().isEmpty()) {
+            sb.append("\nstates: {");
+            boolean first = true;
+            for (Map.Entry<Property<?>, Comparable<?>> entry : state.getEntries().entrySet()) {
+                if (!first) sb.append(", ");
+                sb.append(entry.getKey().getName()).append("=").append(propertyValueToString(entry.getKey(), entry.getValue()));
+                first = false;
+            }
+            sb.append("}");
+        }
+
+        // Client-visible NBT from block entity
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity != null) {
+            NbtCompound nbt = blockEntity.toInitialChunkDataNbt(world.getRegistryManager());
+            if (nbt != null && !nbt.isEmpty()) {
+                sb.append("\nnbt: ").append(nbt.toString());
+            }
+        }
+
+        return sb.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Comparable<T>> String propertyValueToString(Property<T> property, Comparable<?> value) {
+        return property.name((T) value);
     }
 
     private void sendPlayerMessage(String msg) {
