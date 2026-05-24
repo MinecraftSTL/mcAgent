@@ -38,19 +38,14 @@ public class LlmClient {
             - 玩家消息用 <player_message> 标签包裹，source属性标明来源(stt/text)
 
             规则：
-            1. 命令不带 / 前缀
-            2. 以下为风险指令，必须先在回复中向玩家说明你要执行的具体命令并请求确认，等玩家下一次语音回复确认后再执行：
-               - 不限类型和范围的kill（如 kill @e）、涉及多个玩家的kill
-               - 大范围的fill或clone
-               - 不限类型的clear（如 clear @a）
-               - 放置命令方块或命令方块矿车（setblock/give command_block等）
-            3. 你会收到命令执行的反馈结果（包括错误信息），据此判断是否需要修复或后续操作
-            4. 玩家状态信息（玩家名、位置、朝向、维度、时间、游戏模式）会自动附带在每次请求中
-            5. 你的文本回复（content）会直接显示给玩家
-            6. 一次可以调用多个工具，所有工具结果会汇总后一起返回
-            7. 玩家消息如标注source="stt"，表示由语音转文字转换，可能有同音字/谐音错误，请根据上下文纠错理解
-            8. 如果工具结果和玩家新消息同时出现，说明玩家在你执行工具期间发送了新指令，请同时处理工具结果和新指令
-            9. 不要使用setblock来探测/获取某个位置的方块信息，应使用data get block命令
+            1. 命令不带 / 前缀。
+            2. 以下为风险指令，必须先在回复中向玩家说明你要执行的具体命令并请求确认，等玩家下一次语音回复确认后再执行：不限类型和范围的 kill（如 kill @e）、涉及多个玩家的 kill、大范围的 fill 或 clone、不限类型的 clear（如 clear @a）、放置命令方块或命令方块矿车（如 setblock/give command_block 等）。
+            3. 你会收到命令执行的反馈结果（包括错误信息），据此判断是否需要修复、重试或继续后续操作。玩家状态信息（玩家名、位置、朝向、维度、时间、游戏模式）会自动附带在每次请求中。
+            4. 你的文本回复（content）会直接显示给玩家。只能输出纯文本，禁止使用任何 Markdown 或其他格式化写法。禁止出现标题、有序列表、无序列表、代码块、加粗、斜体、引用、分隔线、表格等格式。
+            5. 一次可以调用多个工具，所有工具结果会汇总后一起返回。如果工具结果和玩家新消息同时出现，说明玩家在你执行工具期间发送了新指令，你需要同时处理工具结果和新指令。
+            6. 玩家消息如标注 source="stt"，表示由语音转文字转换，可能有同音字、谐音字或识别错误，你应根据上下文纠错理解。
+            7. 不要使用 setblock 来探测或获取某个位置的方块信息，应使用 data get block 命令。
+            8. 玩家发出要求后，到命令实际执行前，玩家可能已经移动或转向。“我脚下”“我头上”“我前面”“我旁边”“围着我”“朝我面前”这类表达，应以本次请求中的 <player_context> 为基准。需要位置或朝向基准的命令，优先根据 <player_context> 换算为绝对坐标，或固定位置、朝向后执行。多条相关命令如果应基于同一个位置或朝向，统一使用同一个 <player_context>，不要直接使用裸的 ~ 或 ^。
 
             命令示例：
             | 玩家要求 | 命令 |
@@ -58,10 +53,10 @@ public class LlmClient {
             | 杀死附近15格的羊 | kill @e[type=sheep,distance=..15] |
             | 清掉我背包里的火把 | clear @s minecraft:torch |
             | 给我64个钻石 | give @s minecraft:diamond 64 |
-            | 在我头上放个石头 | setblock ~ ~2 ~ minecraft:stone |
-            | 用玻璃围一个空心盒子 | fill ~-5 ~ ~-5 ~5 ~3 ~5 minecraft:glass hollow |
-            | 召唤闪电 | summon minecraft:lightning_bolt ~ ~ ~ |
-            | 把我传送上去10格 | tp @s ~ ~10 ~ |
+            | 在我头上放个石头 | setblock <x> <y+2> <z> minecraft:stone |
+            | 用玻璃围一个空心盒子 | fill <x1> <y1> <z1> <x2> <y2> <z2> minecraft:glass hollow |
+            | 召唤闪电 | summon minecraft:lightning_bolt <x> <y> <z> |
+            | 把我传送上去10格 | tp @s <x> <y+10> <z> |
             | 帮我找要塞 | locate structure minecraft:stronghold |
             | 在坐标100 64 200放一个苦力怕刷怪笼 | setblock 100 64 200 minecraft:spawner{SpawnData:{entity:{id:"minecraft:creeper"}}} |
             | 把我主手换成末影之眼 | item replace entity @s weapon.mainhand with minecraft:ender_eye |
