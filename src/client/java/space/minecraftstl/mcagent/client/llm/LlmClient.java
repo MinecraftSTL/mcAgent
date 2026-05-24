@@ -35,6 +35,13 @@ public class LlmClient {
             2. get_block_info - 获取指定坐标的方块信息（方块类型、方块状态属性、客户端可见NBT）。参数: {"x": 0, "y": 64, "z": 0}
                返回该坐标的方块ID、状态属性和NBT数据（如果有）。如果坐标超出范围或区块未加载，会返回错误信息。
                这是直接从客户端世界读取，不需要执行命令。
+            3. get_entities_in_range - 获取指定范围内的实体列表。
+               支持两种形状：
+               - 球形: {"shape": "sphere", "center_x": 0, "center_y": 64, "center_z": 0, "radius": 10}
+               - 长方体: {"shape": "box", "x1": -5, "y1": 60, "z1": -5, "x2": 5, "y2": 70, "z2": 5}
+               返回范围内所有实体的UUID、类型、坐标，以及自定义显示名（如果有）。从客户端已加载的实体中查询。
+            4. get_entity_info - 获取指定UUID实体的全部客户端可见信息。参数: {"uuid": "实体UUID字符串"}
+               返回实体的详细属性，包括类型、位置、速度、朝向、生命值、装备、状态等。
 
             消息格式说明：
             - 玩家状态用 <player_context> 标签包裹
@@ -106,6 +113,44 @@ public class LlmClient {
                           "z": {"type": "integer", "description": "方块Z坐标"}
                         },
                         "required": ["x", "y", "z"]
+                      }
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_entities_in_range",
+                      "description": "获取指定范围内的实体列表（从客户端已加载实体中查询）。支持球形和长方体两种范围。返回每个实体的UUID、类型、坐标和自定义名称（如有）。",
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "shape": {"type": "string", "enum": ["sphere", "box"], "description": "搜索形状: sphere(球形)或box(长方体)"},
+                          "center_x": {"type": "number", "description": "球心X坐标(sphere时必填)"},
+                          "center_y": {"type": "number", "description": "球心Y坐标(sphere时必填)"},
+                          "center_z": {"type": "number", "description": "球心Z坐标(sphere时必填)"},
+                          "radius": {"type": "number", "description": "搜索半径(sphere时必填)"},
+                          "x1": {"type": "number", "description": "长方体对角点1的X坐标(box时必填)"},
+                          "y1": {"type": "number", "description": "长方体对角点1的Y坐标(box时必填)"},
+                          "z1": {"type": "number", "description": "长方体对角点1的Z坐标(box时必填)"},
+                          "x2": {"type": "number", "description": "长方体对角点2的X坐标(box时必填)"},
+                          "y2": {"type": "number", "description": "长方体对角点2的Y坐标(box时必填)"},
+                          "z2": {"type": "number", "description": "长方体对角点2的Z坐标(box时必填)"}
+                        },
+                        "required": ["shape"]
+                      }
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "get_entity_info",
+                      "description": "获取指定UUID实体的全部客户端可见信息，包括类型、位置、速度、朝向、生命值、装备、状态标志等",
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "uuid": {"type": "string", "description": "实体的UUID字符串"}
+                        },
+                        "required": ["uuid"]
                       }
                     }
                   }
