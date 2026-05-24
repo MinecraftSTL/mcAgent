@@ -255,18 +255,14 @@ public class AudioRecorder {
     private byte[] trimSilence(byte[] raw) {
         McagentConfig cfg = McagentConfig.get();
         int start = 0;
+        // 只裁剪头部静音，保留尾部静音（供ASR识别语句结束）
         while (start + CHUNK_SIZE <= raw.length) {
             if (!isSilent(raw, start, CHUNK_SIZE, cfg.silenceThreshold)) break;
             start += CHUNK_SIZE;
         }
-        int end = raw.length;
-        while (end - CHUNK_SIZE >= start) {
-            if (!isSilent(raw, end - CHUNK_SIZE, CHUNK_SIZE, cfg.silenceThreshold)) break;
-            end -= CHUNK_SIZE;
-        }
-        if (start >= end) return new byte[0];
-        byte[] result = new byte[end - start];
-        System.arraycopy(raw, start, result, 0, end - start);
+        if (start >= raw.length) return new byte[0];
+        byte[] result = new byte[raw.length - start];
+        System.arraycopy(raw, start, result, 0, raw.length - start);
         return result;
     }
 
