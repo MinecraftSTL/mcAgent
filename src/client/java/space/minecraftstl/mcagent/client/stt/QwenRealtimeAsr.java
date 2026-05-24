@@ -10,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import space.minecraftstl.mcagent.client.config.McagentConfig;
 
+import javax.net.ssl.*;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -24,17 +27,31 @@ public class QwenRealtimeAsr {
     private static final Logger LOGGER = LoggerFactory.getLogger("mcagent");
     private static final int AUDIO_CHUNK_SIZE = 3200; // 100ms of 16kHz 16-bit mono PCM
     private static final int TIMEOUT_SECONDS = 30;
-    private static final String DASHSCOPE_WS_URL = "wss://dashscope.aliyuncs.com/api-ws/v1/inference";
 
     public static String transcribeBlocking(byte[] audioData, McagentConfig cfg) {
         try {
             String model = cfg.sttModel;
             String apiKey = cfg.sttApiKey;
-            // Qwen实时ASR直连DashScope WebSocket，不使用cfg.sttApiUrl（那是REST端点）
-            String wsUrl = DASHSCOPE_WS_URL;
+            // 拼接 model 到 URL 查询参数（官方协议要求）
+            String baseUrl = cfg.sttApiUrl;
+            String wsUrl = baseUrl + (baseUrl.contains("?") ? "&" : "?") + "model=" + model;
             LOGGER.info("[mcAgent] ASR raw WS: url={}, model={}, audioSize={}", wsUrl, model, audioData.length);
 
+            // 配置 SSL（确保在 Fabric Knot 类加载器环境下正常 TLS 握手）
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(null, new TrustManager[]{new X509TrustManager() {
+                @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+            }}, new SecureRandom());
+
             OkHttpClient client = new OkHttpClient.Builder()
+                    .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) new X509TrustManager() {
+                        @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                        @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                        @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                    })
+                    .hostnameVerifier((hostname, session) -> true)
                     .readTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .writeTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .connectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -43,6 +60,7 @@ public class QwenRealtimeAsr {
             Request request = new Request.Builder()
                     .url(wsUrl)
                     .header("Authorization", "Bearer " + apiKey)
+                    .header("X-DashScope-OmniRTC", "v1")
                     .build();
 
             CountDownLatch sessionLatch = new CountDownLatch(1);
@@ -62,7 +80,6 @@ public class QwenRealtimeAsr {
                     sessionUpdate.addProperty("type", "session.update");
 
                     JsonObject session = new JsonObject();
-                    session.addProperty("model", model);
 
                     JsonArray modalities = new JsonArray();
                     modalities.add("text");
@@ -70,9 +87,15 @@ public class QwenRealtimeAsr {
 
                     JsonObject inputAudioTranscription = new JsonObject();
                     inputAudioTranscription.addProperty("language", "zh");
-                    inputAudioTranscription.addProperty("input_audio_format", "pcm");
-                    inputAudioTranscription.addProperty("input_sample_rate", 16000);
+                    inputAudioTranscription.addProperty("model", model);
                     session.add("input_audio_transcription", inputAudioTranscription);
+
+                    JsonObject inputAudioFormat = new JsonObject();
+                    inputAudioFormat.addProperty("type", "pcm");
+                    inputAudioFormat.addProperty("sample_rate", 16000);
+                    inputAudioFormat.addProperty("sample_size_in_bits", 16);
+                    inputAudioFormat.addProperty("channels", 1);
+                    session.add("input_audio", inputAudioFormat);
 
                     sessionUpdate.add("session", session);
 
@@ -109,9 +132,17 @@ public class QwenRealtimeAsr {
                                 }
                                 break;
 
+                            case "session.finished":
+                                LOGGER.info("[mcAgent] ASR session.finished");
+                                resultText.set(transcript.toString());
+                                finishLatch.countDown();
+                                break;
+
                             case "response.done":
                                 LOGGER.info("[mcAgent] ASR response.done");
-                                resultText.set(transcript.toString());
+                                if (transcript.length() > 0) {
+                                    resultText.set(transcript.toString());
+                                }
                                 finishLatch.countDown();
                                 break;
 
@@ -183,11 +214,6 @@ public class QwenRealtimeAsr {
             audioCommit.addProperty("type", "input_audio_buffer.commit");
             ws.send(audioCommit.toString());
             LOGGER.info("[mcAgent] ASR audio committed, waiting for transcription...");
-
-            // Request a response
-            JsonObject responseCreate = new JsonObject();
-            responseCreate.addProperty("type", "response.create");
-            ws.send(responseCreate.toString());
 
             // Wait for transcription result
             if (!finishLatch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
