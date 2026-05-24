@@ -9,6 +9,11 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.GameMenuScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.screen.DisconnectedScreen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
@@ -85,11 +90,32 @@ public class McagentClient implements ClientModInitializer {
             McagentConfig cfg = McagentConfig.get();
             String mode = cfg.recordingMode;
 
-            // Handle screen open - stop active recordings
+            // Handle screen open
             if (client.currentScreen != null) {
-                if (pttPressed && recorder.isRecording()) {
-                    stopAndProcess();
-                    lastStopTime = System.currentTimeMillis();
+                if (isPauseScreen(client.currentScreen)) {
+                    // ESC菜单、主菜单等 → 完全停止录音
+                    if (toggleActive && recorder.isRecording()) {
+                        toggleActive = false;
+                        recorder.stopRecording(); // discard
+                        hudRenderer.setStatus(null);
+                    }
+                    if (pttPressed && recorder.isRecording()) {
+                        recorder.stopRecording(); // discard
+                    }
+                    if (recorder.isBackgroundRecording()) {
+                        recorder.stopBackgroundRecording();
+                        pushToSendInitialized = false;
+                    }
+                    pttPressed = false;
+                    return;
+                }
+                // 游戏内界面（物品栏、聊天等）→ V键不生效，但toggle/push_to_send继续工作
+                if ("toggle".equals(mode) && toggleActive) {
+                    handleToggleAutoRestart();
+                }
+                if ("push_to_send".equals(mode) && !recorder.isBackgroundRecording()) {
+                    recorder.startBackgroundRecording();
+                    hudRenderer.setStatus("◉ 监听中");
                 }
                 pttPressed = false;
                 return;
@@ -280,6 +306,31 @@ public class McagentClient implements ClientModInitializer {
                 hudRenderer.setStatus(toggleActive ? "● 录音中..." : (recorder.isBackgroundRecording() ? "◉ 监听中" : null));
             }
         });
+    }
+
+    /**
+     * 判断是否为暂停类界面（ESC菜单、主菜单、断开连接等），这些界面下应完全停止录音。
+     * 其他游戏内界面（物品栏、聊天、合成台等）不算暂停界面。
+     */
+    private boolean isPauseScreen(Screen screen) {
+        return screen instanceof GameMenuScreen
+                || screen instanceof TitleScreen
+                || screen instanceof DisconnectedScreen
+                || screen instanceof MultiplayerScreen;
+    }
+
+    /**
+     * Toggle模式下在游戏内界面（物品栏、聊天等）时的自动重启逻辑。
+     * 只处理静音检测后的自动重启，不检测V键。
+     */
+    private void handleToggleAutoRestart() {
+        if (!recorder.isRecording()) {
+            // Recording stopped (silence detection) - process and restart
+            stopAndProcess();
+            if (toggleActive) {
+                startRecording();
+            }
+        }
     }
 
     private void sendClientMessage(String msg) {
