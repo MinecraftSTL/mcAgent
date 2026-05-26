@@ -40,6 +40,9 @@ public class LlmClient {
                - 球形: {"shape": "sphere", "center_x": 0, "center_y": 64, "center_z": 0, "radius": 10}
                - 长方体: {"shape": "box", "x1": -5, "y1": 60, "z1": -5, "x2": 5, "y2": 70, "z2": 5}
                返回范围内所有实体的UUID、类型、坐标，以及自定义显示名（如果有）。从客户端已加载的实体中查询。
+            4. scan_blocks_in_area - 扫描指定长方体范围内所有方块，统计每种方块类型的数量。
+               参数: {"x1": 0, "y1": 60, "z1": 0, "x2": 10, "y2": 70, "z2": 10}
+               通过对角两点定义长方体范围，返回该范围内每种方块ID及其数量（按数量降序）。从客户端世界读取，区块未加载的部分会被跳过。最大扫描体积为32768个方块。
 
             消息格式说明：
             - 玩家状态用 <player_context> 标签包裹
@@ -135,6 +138,25 @@ public class LlmClient {
                           "z2": {"type": "number", "description": "长方体对角点2的Z坐标(box时必填)"}
                         },
                         "required": ["shape"]
+                      }
+                    }
+                  },
+                  {
+                    "type": "function",
+                    "function": {
+                      "name": "scan_blocks_in_area",
+                      "description": "扫描指定长方体范围内所有方块，返回每种方块类型的数量统计（按数量降序）。最大扫描体积32768个方块。",
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "x1": {"type": "integer", "description": "对角点1的X坐标"},
+                          "y1": {"type": "integer", "description": "对角点1的Y坐标"},
+                          "z1": {"type": "integer", "description": "对角点1的Z坐标"},
+                          "x2": {"type": "integer", "description": "对角点2的X坐标"},
+                          "y2": {"type": "integer", "description": "对角点2的Y坐标"},
+                          "z2": {"type": "integer", "description": "对角点2的Z坐标"}
+                        },
+                        "required": ["x1", "y1", "z1", "x2", "y2", "z2"]
                       }
                     }
                   }

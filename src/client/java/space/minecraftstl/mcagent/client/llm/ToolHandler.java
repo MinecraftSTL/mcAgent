@@ -17,8 +17,10 @@ import space.minecraftstl.mcagent.client.command.CommandExecutor;
 import space.minecraftstl.mcagent.client.tts.TextToSpeech;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ToolHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger("mcagent");
@@ -110,6 +112,9 @@ public class ToolHandler {
             }
             case "get_entities_in_range" -> {
                 yield new ToolResult(id, getEntitiesInRange(args));
+            }
+            case "scan_blocks_in_area" -> {
+                yield new ToolResult(id, scanBlocksInArea(args));
             }
             default -> new ToolResult(id, "未知工具: " + name);
         };
@@ -217,6 +222,60 @@ public class ToolHandler {
             result.add(obj);
         }
         return result.isEmpty() ? "范围内没有找到实体" : result.toString();
+    }
+
+    private String scanBlocksInArea(JsonObject args) {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        ClientWorld world = mc.world;
+        if (world == null) return "无法获取: 世界未加载";
+
+        int x1 = args.get("x1").getAsInt();
+        int y1 = args.get("y1").getAsInt();
+        int z1 = args.get("z1").getAsInt();
+        int x2 = args.get("x2").getAsInt();
+        int y2 = args.get("y2").getAsInt();
+        int z2 = args.get("z2").getAsInt();
+
+        int minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+        int minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+        int minZ = Math.min(z1, z2), maxZ = Math.max(z1, z2);
+
+        long volume = (long)(maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
+        if (volume > 32768) {
+            return "范围过大: 体积为" + volume + "个方块，最大允许32768(32×32×32)";
+        }
+
+        // Clamp Y to world bounds
+        minY = Math.max(minY, world.getBottomY());
+        maxY = Math.min(maxY, world.getTopYInclusive());
+
+        HashMap<String, Integer> counts = new HashMap<>();
+        int skippedChunks = 0;
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                if (!world.getChunkManager().isChunkLoaded(x >> 4, z >> 4)) {
+                    skippedChunks++;
+                    continue;
+                }
+                for (int y = minY; y <= maxY; y++) {
+                    BlockState state = world.getBlockState(new BlockPos(x, y, z));
+                    String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
+                    counts.merge(blockId, 1, Integer::sum);
+                }
+            }
+        }
+
+        // Sort by count descending
+        JsonObject result = new JsonObject();
+        counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .forEach(e -> result.addProperty(e.getKey(), e.getValue()));
+
+        if (skippedChunks > 0) {
+            result.addProperty("_skipped_unloaded_columns", skippedChunks);
+        }
+        return result.toString();
     }
 
     @SuppressWarnings("unchecked")
