@@ -78,8 +78,8 @@ public class QwenRealtimeTts {
         if (!sessionFinishLatch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
             LOGGER.warn("[mcAgent] TTS session.finished 等待超时");
         }
-        // 等待音频播放完成
-        audioPlayer.waitForComplete();
+        // 等待音频播放完成（根据文本长度动态计算超时）
+        audioPlayer.waitForComplete(text.length());
         audioPlayer.shutdown();
     }
 
@@ -127,8 +127,10 @@ public class QwenRealtimeTts {
             decoderThread.start(); playerThread.start();
         }
         void write(String b64) { b64Buf.add(b64); }
-        void waitForComplete() throws InterruptedException {
-            long deadline = System.currentTimeMillis() + 30_000; // 最多等30秒
+        void waitForComplete(int textLength) throws InterruptedException {
+            // 按每秒约4个中文字符估算播放时长，加15秒余量，最少30秒
+            long timeoutMs = Math.max(30_000, (textLength / 4 + 15) * 1000L);
+            long deadline = System.currentTimeMillis() + timeoutMs;
             while (!b64Buf.isEmpty() || !rawBuf.isEmpty()) {
                 if (System.currentTimeMillis() > deadline) {
                     LOGGER.warn("[mcAgent] TTS waitForComplete 超时(buffer未清空)");
@@ -143,7 +145,8 @@ public class QwenRealtimeTts {
                 }, "mcagent-tts-drain");
                 drainThread.setDaemon(true);
                 drainThread.start();
-                drainThread.join(5000); // 最多等5秒drain完成
+                long drainTimeout = Math.max(5000, (textLength / 4) * 1000L);
+                drainThread.join(drainTimeout); // 根据文本长度动态等待drain完成
                 if (drainThread.isAlive()) {
                     LOGGER.warn("[mcAgent] TTS line.drain() 超时，强制继续");
                 }
