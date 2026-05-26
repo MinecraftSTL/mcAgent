@@ -18,10 +18,11 @@ public class AudioRecorder {
 
     private TargetDataLine line;
     private volatile boolean recording = false;
+    private volatile boolean paused = false;
     private ByteArrayOutputStream buffer;
     private Thread recordThread;
 
-    // Ring buffer for push_to_send mode
+    // Ring buffer for send mode
     private volatile boolean backgroundRecording = false;
     private byte[] ringBuffer;
     private volatile int ringWritePos = 0;
@@ -32,8 +33,28 @@ public class AudioRecorder {
         return recording;
     }
 
+    public boolean isPaused() {
+        return paused;
+    }
+
     public boolean isBackgroundRecording() {
         return backgroundRecording;
+    }
+
+    /**
+     * Pause recording/background recording. Data read from the audio line will be discarded while paused.
+     */
+    public void pauseRecording() {
+        paused = true;
+        LOGGER.info("[mcAgent] 录音已暂停");
+    }
+
+    /**
+     * Resume recording/background recording after a pause.
+     */
+    public void resumeRecording() {
+        paused = false;
+        LOGGER.info("[mcAgent] 录音已恢复");
     }
 
     public void startRecording() {
@@ -96,7 +117,7 @@ public class AudioRecorder {
     }
 
     /**
-     * Start background continuous recording into ring buffer (for push_to_send mode).
+     * Start background continuous recording into ring buffer (for send mode).
      */
     public void startBackgroundRecording() {
         if (backgroundRecording) return;
@@ -213,6 +234,11 @@ public class AudioRecorder {
         while (recording) {
             int read = line.read(buf, 0, buf.length);
             if (read > 0) {
+                if (paused) {
+                    // Discard data while paused, reset silence counter
+                    silentChunks = 0;
+                    continue;
+                }
                 if (autoStop && isSilent(buf, 0, read, cfg.silenceThreshold)) {
                     silentChunks++;
                     if (silentChunks >= maxSilentChunks) {
@@ -232,6 +258,10 @@ public class AudioRecorder {
         while (backgroundRecording) {
             int read = line.read(buf, 0, buf.length);
             if (read > 0) {
+                if (paused) {
+                    // Discard data while paused
+                    continue;
+                }
                 synchronized (this) {
                     for (int i = 0; i < read; i++) {
                         ringBuffer[ringWritePos] = buf[i];

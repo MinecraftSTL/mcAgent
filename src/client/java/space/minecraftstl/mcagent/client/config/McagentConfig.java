@@ -13,8 +13,8 @@ public class McagentConfig {
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("mcagent.json");
     private static McagentConfig INSTANCE;
 
-    // 录音模式: push_to_talk, push_to_send, toggle
-    public String recordingMode = "push_to_talk";
+    // 录音模式: talk, send, toggle
+    public String recordingMode = "talk";
     // 语音处理模式: stt_then_llm, direct_audio
     public String voiceMode = "stt_then_llm";
     // 按键绑定

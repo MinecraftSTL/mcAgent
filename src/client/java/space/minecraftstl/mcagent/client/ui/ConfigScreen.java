@@ -56,7 +56,7 @@ public class ConfigScreen extends Screen {
         int w = Math.min(this.width - 40, 360);
         int x = (this.width - w) / 2;
         int y = 25;
-        addCycleEntry("录音模式", new String[]{"push_to_talk", "push_to_send", "toggle"}, cfg.recordingMode, x, y, w); y += 24;
+        addCycleEntry("录音模式", new String[]{"talk", "send", "toggle"}, cfg.recordingMode, x, y, w); y += 24;
         addCycleEntry("语音模式", new String[]{"stt_then_llm", "direct_audio"}, cfg.voiceMode, x, y, w); y += 24;
         addCycleEntry("STT类型", new String[]{"online", "local"}, cfg.sttType, x, y, w); y += 24;
         addTextEntry("STT API地址", cfg.sttApiUrl, x, y, w); y += 24;

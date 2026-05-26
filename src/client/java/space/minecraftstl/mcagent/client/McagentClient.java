@@ -36,7 +36,7 @@ public class McagentClient implements ClientModInitializer {
     private final ToolHandler toolHandler = new ToolHandler(llmClient);
     private final HudRenderer hudRenderer = new HudRenderer();
 
-    // push_to_talk state
+    // talk state
     private boolean pttPressed = false;
     private long lastStopTime = 0;
     private long pttPressStart = 0;
@@ -44,11 +44,14 @@ public class McagentClient implements ClientModInitializer {
     // toggle state (auto-listen with silence detection, press to start/stop)
     private boolean toggleActive = false;
 
-    // push_to_send state (background recording always on)
+    // send state (background recording always on)
     private boolean pushToSendInitialized = false;
 
     // track active mode to detect switches
     private String activeMode = "";
+
+    // pause state for ESC menu
+    private boolean pausedByScreen = false;
 
     @Override
     public void onInitializeClient() {
@@ -92,8 +95,8 @@ public class McagentClient implements ClientModInitializer {
 
             // Handle screen open
             if (client.currentScreen != null) {
-                if (isPauseScreen(client.currentScreen)) {
-                    // ESC菜单、主菜单等 → 完全停止录音
+                if (isExitScreen(client.currentScreen)) {
+                    // 主菜单、断开连接等 → 完全停止录音
                     if (toggleActive && recorder.isRecording()) {
                         toggleActive = false;
                         recorder.stopRecording(); // discard
@@ -106,14 +109,35 @@ public class McagentClient implements ClientModInitializer {
                         recorder.stopBackgroundRecording();
                         pushToSendInitialized = false;
                     }
+                    pausedByScreen = false;
                     pttPressed = false;
                     return;
                 }
-                // 游戏内界面（物品栏、聊天等）→ V键不生效，但toggle/push_to_send继续工作
+                if (isGameMenuScreen(client.currentScreen)) {
+                    // ESC菜单 → 暂停录音（toggle/send），停止录音（talk）
+                    if (!pausedByScreen) {
+                        if ("talk".equals(mode)) {
+                            // PTT模式：停止录音并丢弃
+                            if (pttPressed && recorder.isRecording()) {
+                                recorder.stopRecording(); // discard
+                            }
+                        } else {
+                            // toggle / send 模式：暂停录音
+                            if (recorder.isRecording() || recorder.isBackgroundRecording()) {
+                                recorder.pauseRecording();
+                                hudRenderer.setStatus("⏸ 已暂停");
+                            }
+                        }
+                        pausedByScreen = true;
+                    }
+                    pttPressed = false;
+                    return;
+                }
+                // 游戏内界面（物品栏、聊天等）→ V键不生效，但toggle/send继续工作
                 if ("toggle".equals(mode) && toggleActive) {
                     handleToggleAutoRestart();
                 }
-                if ("push_to_send".equals(mode) && !recorder.isBackgroundRecording()) {
+                if ("send".equals(mode) && !recorder.isBackgroundRecording()) {
                     recorder.startBackgroundRecording();
                     hudRenderer.setStatus("◉ 监听中");
                 }
@@ -121,13 +145,26 @@ public class McagentClient implements ClientModInitializer {
                 return;
             }
 
+            // Returned from ESC menu - resume if paused
+            if (pausedByScreen) {
+                pausedByScreen = false;
+                if (recorder.isPaused()) {
+                    recorder.resumeRecording();
+                    if ("toggle".equals(mode) && toggleActive) {
+                        hudRenderer.setStatus("● 录音中...");
+                    } else if ("send".equals(mode) && recorder.isBackgroundRecording()) {
+                        hudRenderer.setStatus("◉ 监听中");
+                    }
+                }
+            }
+
             if (!mode.equals(activeMode)) {
                 cleanupPreviousMode();
                 activeMode = mode;
             }
             switch (mode) {
-                case "push_to_talk" -> handlePushToTalk();
-                case "push_to_send" -> handlePushToSend();
+                case "talk" -> handlePushToTalk();
+                case "send" -> handlePushToSend();
                 case "toggle" -> handleToggle();
             }
         });
@@ -176,14 +213,14 @@ public class McagentClient implements ClientModInitializer {
             recorder.startBackgroundRecording();
             pushToSendInitialized = true;
             hudRenderer.setStatus("◉ 监听中");
-            LOGGER.info("[mcAgent] push_to_send: 后台录音已启动");
+            LOGGER.info("[mcAgent] send: 后台录音已启动");
         }
 
         long handle = MinecraftClient.getInstance().getWindow().getHandle();
         boolean pressed = GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_V) == GLFW.GLFW_PRESS;
         if (pressed && !pttPressed) {
             // Key just pressed - extract last speech and process
-            LOGGER.info("[mcAgent] push_to_send: 按键触发，提取最后一段语音");
+            LOGGER.info("[mcAgent] send: 按键触发，提取最后一段语音");
             byte[] wav = recorder.extractLastSpeech();
             processAudio(wav);
         }
@@ -309,12 +346,17 @@ public class McagentClient implements ClientModInitializer {
     }
 
     /**
-     * 判断是否为暂停类界面（ESC菜单、主菜单、断开连接等），这些界面下应完全停止录音。
-     * 其他游戏内界面（物品栏、聊天、合成台等）不算暂停界面。
+     * 判断是否为ESC游戏菜单界面，这些界面下应暂停录音（toggle/send模式）。
      */
-    private boolean isPauseScreen(Screen screen) {
-        return screen instanceof GameMenuScreen
-                || screen instanceof TitleScreen
+    private boolean isGameMenuScreen(Screen screen) {
+        return screen instanceof GameMenuScreen;
+    }
+
+    /**
+     * 判断是否为退出类界面（主菜单、断开连接等），这些界面下应完全停止录音。
+     */
+    private boolean isExitScreen(Screen screen) {
+        return screen instanceof TitleScreen
                 || screen instanceof DisconnectedScreen
                 || screen instanceof MultiplayerScreen;
     }
