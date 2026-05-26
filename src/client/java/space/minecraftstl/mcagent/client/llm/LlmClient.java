@@ -32,8 +32,8 @@ public class LlmClient {
             1. execute_commands - 执行Minecraft命令列表。参数: {"commands": ["command1", "command2"]}
                命令不需要带 / 前缀。命令会发送到服务端执行，不因客户端未加载目标区块或不可见而默认失败。所有命令会依次执行，结果会汇总后一起返回。
                没有输出的命令会显示"已执行(无返回值)"，执行失败会显示错误信息。
-            2. get_block_info - 获取指定坐标的方块信息（方块类型、方块状态属性、客户端可见NBT）。参数: {"x": 0, "y": 64, "z": 0}
-               返回该坐标的方块ID、状态属性和NBT数据（如果有）。如果坐标超出范围或区块未加载，会返回错误信息。
+            2. get_block_info - 获取指定坐标的方块信息（方块类型、方块状态属性）。参数: {"x": 0, "y": 64, "z": 0}
+               返回该坐标的方块ID和状态属性。如果坐标超出范围或区块未加载，会返回错误信息。
                这是直接从客户端世界读取，不需要执行命令。
             3. get_entities_in_range - 获取指定范围内的实体列表。
                支持两种形状：
@@ -102,7 +102,7 @@ public class LlmClient {
                     "type": "function",
                     "function": {
                       "name": "get_block_info",
-                      "description": "获取指定坐标的方块信息，包括方块ID、状态属性和客户端可见的NBT数据",
+                      "description": "获取指定坐标的方块信息，包括方块ID和状态属性",
                       "parameters": {
                         "type": "object",
                         "properties": {

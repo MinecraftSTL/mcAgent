@@ -2,11 +2,9 @@ package space.minecraftstl.mcagent.client.llm;
 
 import com.google.gson.*;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
 import net.minecraft.text.Text;
@@ -159,15 +157,6 @@ public class ToolHandler {
                 first = false;
             }
             sb.append("}");
-        }
-
-        // Client-visible NBT from block entity
-        BlockEntity blockEntity = world.getBlockEntity(pos);
-        if (blockEntity != null) {
-            NbtCompound nbt = blockEntity.toInitialChunkDataNbt(world.getRegistryManager());
-            if (nbt != null && !nbt.isEmpty()) {
-                sb.append("\nnbt: ").append(nbt.toString());
-            }
         }
 
         return sb.toString();
