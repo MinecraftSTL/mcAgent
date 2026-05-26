@@ -30,7 +30,7 @@ public class McagentConfig {
     // LLM 配置
     public String llmApiUrl = "https://api.example.invalid:3000/v1/chat/completions";
     public String llmApiKey = "";
-    public String llmModel = "claude-opus-4-6";
+    public String llmModel = "deepseek-v4-pro";
     public int maxContextRounds = 64;
 
     // 提示词
