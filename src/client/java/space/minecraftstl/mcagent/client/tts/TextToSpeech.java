@@ -51,7 +51,8 @@ public class TextToSpeech {
         String jsonBody = GSON.toJson(Map.of(
                 "model", cfg.ttsModel,
                 "input", text,
-                "voice", voice
+                "voice", voice,
+                "response_format", "pcm"
         ));
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(cfg.ttsApiUrl))
@@ -70,7 +71,10 @@ public class TextToSpeech {
     private static void playWav(byte[] audioData) {
         try {
             stopCurrent();
-            AudioInputStream ais = AudioSystem.getAudioInputStream(new ByteArrayInputStream(audioData));
+            // OpenAI兼容TTS的pcm格式: 24kHz, 16bit, mono, signed, little-endian
+            AudioFormat format = new AudioFormat(24000, 16, 1, true, false);
+            AudioInputStream ais = new AudioInputStream(
+                    new ByteArrayInputStream(audioData), format, audioData.length / format.getFrameSize());
             Clip clip = AudioSystem.getClip();
             clip.open(ais);
             currentClip.set(clip);
