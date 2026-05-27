@@ -3,6 +3,8 @@ package space.minecraftstl.mcagent.client.llm;
 import com.google.gson.*;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import space.minecraftstl.mcagent.client.config.McagentConfig;
 
 import java.net.URI;
@@ -51,7 +53,11 @@ public class LlmClient {
             规则：
             1. 命令不带 / 前缀。
             2. 以下为风险指令，必须先在回复中向玩家说明你要执行的具体命令并请求确认，等玩家下一次语音回复确认后再执行：不限类型和范围的 kill（如 kill @e）、涉及多个玩家的 kill、大范围的 fill 或 clone、不限类型的 clear（如 clear @a）、放置命令方块或命令方块矿车（如 setblock/give command_block 等）。
-            3. 你会收到命令执行的反馈结果（包括错误信息），据此判断是否需要修复、重试或继续后续操作。玩家状态信息（玩家名、位置、朝向、维度、时间、游戏模式）会自动附带在每次请求中。
+            3. 你会收到命令执行的反馈结果（包括错误信息），据此判断是否需要修复、重试或继续后续操作。玩家状态信息（玩家名、位置、朝向、维度、时间、游戏模式、准星目标）会自动附带在每次请求中。
+               <player_context> 中还包含以下准星目标信息（值为 null 表示未瞄准任何目标）：
+               - target_block: 玩家准星瞄准的方块坐标（左键可破坏的方块），如 [x, y, z]
+               - target_fluid: 玩家准星瞄准的方块坐标（包含流体，射线会穿过非实体方块），如 [x, y, z]
+               - target_entity: 玩家准星瞄准的实体UUID字符串
             4. 你的文本回复（content）会直接显示给玩家。只能输出纯文本，禁止使用任何 Markdown 或其他格式化写法。禁止出现标题、有序列表、无序列表、代码块、加粗、斜体、引用、分隔线、表格等格式。
             5. 一次可以调用多个工具，所有工具结果会汇总后一起返回。如果工具结果和玩家新消息同时出现，说明玩家在你执行工具期间发送了新指令，你需要同时处理工具结果和新指令。
             6. 玩家消息如标注 source="stt"，表示由语音转文字转换，可能有同音字、谐音字或识别错误，你应根据上下文纠错理解。
@@ -199,7 +205,32 @@ public class LlmClient {
         MinecraftClient mc = MinecraftClient.getInstance();
         ClientPlayerEntity player = mc.player;
         if (player == null || mc.world == null) return "";
-        return String.format("<player_context>\n{\"world\": {\"dimension\": \"%s\", \"time\": %d, \"min_y\": %d, \"max_y\": %d}, \"player\": {\"uuid\": \"%s\", \"name\": \"%s\", \"position\": [%.2f, %.2f, %.2f], \"block_pos\": [%d, %d, %d], \"yaw\": %.1f, \"pitch\": %.1f, \"gamemode\": \"%s\"}}\n</player_context>",
+
+        // Target block (what left-click would break)
+        String targetBlockStr = "null";
+        if (mc.crosshairTarget instanceof BlockHitResult blockHit
+                && mc.crosshairTarget.getType() == HitResult.Type.BLOCK) {
+            var bp = blockHit.getBlockPos();
+            targetBlockStr = String.format("[%d, %d, %d]", bp.getX(), bp.getY(), bp.getZ());
+        }
+
+        // Target fluid (raycast including fluids, also hits non-collidable blocks)
+        String targetFluidStr = "null";
+        double reach = player.getBlockInteractionRange();
+        HitResult fluidHit = player.raycast(reach, 1.0f, true);
+        if (fluidHit instanceof BlockHitResult fluidBlockHit
+                && fluidHit.getType() == HitResult.Type.BLOCK) {
+            var fp = fluidBlockHit.getBlockPos();
+            targetFluidStr = String.format("[%d, %d, %d]", fp.getX(), fp.getY(), fp.getZ());
+        }
+
+        // Target entity UUID
+        String targetEntityStr = "null";
+        if (mc.targetedEntity != null) {
+            targetEntityStr = "\"" + mc.targetedEntity.getUuidAsString() + "\"";
+        }
+
+        return String.format("<player_context>\n{\"world\": {\"dimension\": \"%s\", \"time\": %d, \"min_y\": %d, \"max_y\": %d}, \"player\": {\"uuid\": \"%s\", \"name\": \"%s\", \"position\": [%.2f, %.2f, %.2f], \"block_pos\": [%d, %d, %d], \"yaw\": %.1f, \"pitch\": %.1f, \"gamemode\": \"%s\"}, \"target_block\": %s, \"target_fluid\": %s, \"target_entity\": %s}\n</player_context>",
                 mc.world.getRegistryKey().getValue().toString(),
                 mc.world.getTimeOfDay(),
                 mc.world.getBottomY(),
@@ -209,7 +240,8 @@ public class LlmClient {
                 player.getX(), player.getY(), player.getZ(),
                 player.getBlockPos().getX(), player.getBlockPos().getY(), player.getBlockPos().getZ(),
                 player.getYaw(), player.getPitch(),
-                mc.interactionManager != null ? mc.interactionManager.getCurrentGameMode().getId() : "unknown");
+                mc.interactionManager != null ? mc.interactionManager.getCurrentGameMode().getId() : "unknown",
+                targetBlockStr, targetFluidStr, targetEntityStr);
     }
 
     public JsonObject sendText(String userText) {
