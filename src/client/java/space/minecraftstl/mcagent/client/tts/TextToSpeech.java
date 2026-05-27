@@ -77,6 +77,7 @@ public class TextToSpeech {
                     new ByteArrayInputStream(audioData), format, audioData.length / format.getFrameSize());
             Clip clip = AudioSystem.getClip();
             clip.open(ais);
+            TtsVolumeHelper.applyVoiceVolume(clip);
             currentClip.set(clip);
             clip.start();
             clip.addLineListener(event -> {

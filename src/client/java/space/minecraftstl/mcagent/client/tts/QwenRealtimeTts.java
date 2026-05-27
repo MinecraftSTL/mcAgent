@@ -97,7 +97,9 @@ public class QwenRealtimeTts {
             AudioFormat fmt = new AudioFormat(sampleRate, 16, 1, true, false);
             DataLine.Info info = new DataLine.Info(SourceDataLine.class, fmt);
             line = (SourceDataLine) AudioSystem.getLine(info);
-            line.open(fmt, sampleRate * 2); line.start();
+            line.open(fmt, sampleRate * 2);
+            TtsVolumeHelper.applyVoiceVolume(line);
+            line.start();
             decoderThread = new Thread(() -> {
                 while (!stopped.get()) {
                     String b = b64Buf.poll();
