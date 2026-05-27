@@ -24,7 +24,7 @@ public class McagentConfig {
     public String sttType = "online"; // online 或 local
     public String sttApiUrl = "https://api.example.invalid:3000/v1/audio/transcriptions";
     public String sttApiKey = "";
-    public String sttModel = "whisper-1";
+    public String sttModel = "whisper-large";
     public String sttLocalPath = ""; // 本地whisper可执行文件路径
 
     // LLM 配置
