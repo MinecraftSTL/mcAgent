@@ -297,19 +297,23 @@ public class McagentClient implements ClientModInitializer {
         LOGGER.info("[mcAgent] 录音数据 {} 字节，发送处理", wav.length);
         hudRenderer.setStatus("⟳ 处理中...");
 
+        // Capture player context on the tick thread (before entering virtual thread)
+        // so it reflects the player's state at the moment of voice key action
+        String playerContext = llmClient.getPlayerContext();
+
         Thread.startVirtualThread(() -> {
             McagentConfig cfg = McagentConfig.get();
 
             if (!llmClient.tryStartProcessing()) {
                 if ("direct_audio".equals(cfg.voiceMode)) {
-                    llmClient.queueAudio(wav);
+                    llmClient.queueAudio(wav, playerContext);
                     LOGGER.info("[mcAgent] AI处理中，音频已排队");
                 } else {
                     try {
                         String text = SpeechToText.transcribe(wav);
                         LOGGER.info("[mcAgent] AI处理中，消息已排队: {}", text);
                         if (text != null && !text.isBlank()) {
-                            llmClient.queueSttMessage(text);
+                            llmClient.queueSttMessage(text, playerContext);
                         }
                     } catch (Exception e) {
                         LOGGER.error("[mcAgent] STT排队出错", e);
@@ -322,7 +326,7 @@ public class McagentClient implements ClientModInitializer {
                 JsonObject response;
                 if ("direct_audio".equals(cfg.voiceMode)) {
                     LOGGER.info("[mcAgent] 直接发送音频给LLM");
-                    response = llmClient.sendAudio(wav);
+                    response = llmClient.sendAudio(wav, playerContext);
                 } else {
                     String text = SpeechToText.transcribe(wav);
                     LOGGER.info("[mcAgent] STT结果: {}", text);
@@ -331,7 +335,7 @@ public class McagentClient implements ClientModInitializer {
                         return;
                     }
                     hudRenderer.setStatus("⟳ AI思考中...");
-                    response = llmClient.sendTextFromStt(text);
+                    response = llmClient.sendTextFromStt(text, playerContext);
                 }
                 LOGGER.info("[mcAgent] LLM响应已收到");
                 toolHandler.processResponse(response);

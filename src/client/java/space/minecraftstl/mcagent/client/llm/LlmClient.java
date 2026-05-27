@@ -24,7 +24,7 @@ public class LlmClient {
     private final java.util.concurrent.atomic.AtomicBoolean processing = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final ConcurrentLinkedQueue<QueuedMessage> messageQueue = new ConcurrentLinkedQueue<>();
 
-    public record QueuedMessage(String type, String textContent, byte[] audioData) {}
+    public record QueuedMessage(String type, String textContent, byte[] audioData, String playerContext) {}
 
     private static final String TOOL_SYSTEM_PROMPT = """
             你是一个Minecraft Java版 1.21.10游戏助手AI。玩家通过语音向你发出指令，你需要调用工具来执行操作。
@@ -186,15 +186,15 @@ public class LlmClient {
     }
 
     public void queueUserMessage(String message) {
-        messageQueue.add(new QueuedMessage("text", message, null));
+        messageQueue.add(new QueuedMessage("text", message, null, null));
     }
 
-    public void queueSttMessage(String message) {
-        messageQueue.add(new QueuedMessage("stt", message, null));
+    public void queueSttMessage(String message, String playerContext) {
+        messageQueue.add(new QueuedMessage("stt", message, null, playerContext));
     }
 
-    public void queueAudio(byte[] wav) {
-        messageQueue.add(new QueuedMessage("audio", null, wav));
+    public void queueAudio(byte[] wav, String playerContext) {
+        messageQueue.add(new QueuedMessage("audio", null, wav, playerContext));
     }
 
     public boolean hasPendingMessages() {
@@ -248,13 +248,17 @@ public class LlmClient {
         return sendText(userText, "text");
     }
 
-    public JsonObject sendTextFromStt(String userText) {
-        return sendText(userText, "stt");
+    public JsonObject sendTextFromStt(String userText, String playerContext) {
+        return sendText(userText, "stt", playerContext);
     }
 
     private JsonObject sendText(String userText, String source) {
+        return sendText(userText, source, getPlayerContext());
+    }
+
+    private JsonObject sendText(String userText, String source, String playerContext) {
         McagentConfig cfg = McagentConfig.get();
-        String content = getPlayerContext() + "\n<player_message source=\"" + source + "\">\n" + userText + "\n</player_message>";
+        String content = playerContext + "\n<player_message source=\"" + source + "\">\n" + userText + "\n</player_message>";
         JsonObject userMsg = new JsonObject();
         userMsg.addProperty("role", "user");
         userMsg.addProperty("content", content);
@@ -263,14 +267,14 @@ public class LlmClient {
         return doRequest(cfg);
     }
 
-    public JsonObject sendAudio(byte[] wavData) {
+    public JsonObject sendAudio(byte[] wavData, String playerContext) {
         McagentConfig cfg = McagentConfig.get();
         JsonObject userMsg = new JsonObject();
         userMsg.addProperty("role", "user");
         JsonArray content = new JsonArray();
         JsonObject textPart = new JsonObject();
         textPart.addProperty("type", "text");
-        textPart.addProperty("text", getPlayerContext());
+        textPart.addProperty("text", playerContext);
         content.add(textPart);
         JsonObject audioPart = new JsonObject();
         audioPart.addProperty("type", "input_audio");
@@ -326,8 +330,6 @@ public class LlmClient {
         }
         if (pending.isEmpty()) return;
 
-        String context = getPlayerContext();
-
         // Separate text/stt messages and audio messages
         List<QueuedMessage> textMessages = new ArrayList<>();
         List<QueuedMessage> audioMessages = new ArrayList<>();
@@ -341,6 +343,9 @@ public class LlmClient {
 
         // Add text/stt messages as one user message with multiple <player_message> tags
         if (!textMessages.isEmpty()) {
+            // Use the context from the first text message (captured at voice key time)
+            String context = textMessages.getFirst().playerContext();
+            if (context == null || context.isEmpty()) context = getPlayerContext();
             StringBuilder sb = new StringBuilder(context);
             for (QueuedMessage tm : textMessages) {
                 sb.append("\n<player_message source=\"").append(tm.type()).append("\">\n")
@@ -354,6 +359,8 @@ public class LlmClient {
 
         // Add each audio message as a separate user message with array content
         for (QueuedMessage am : audioMessages) {
+            String context = am.playerContext();
+            if (context == null || context.isEmpty()) context = getPlayerContext();
             JsonObject userMsg = new JsonObject();
             userMsg.addProperty("role", "user");
             JsonArray content = new JsonArray();
