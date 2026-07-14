@@ -128,8 +128,8 @@ public class ToolHandler {
         }
 
         // Check world height bounds
-        if (y < world.getBottomY() || y > world.getTopYInclusive()) {
-            return String.format("无法获取: 坐标Y=%d超出世界高度范围 [%d, %d]", y, world.getBottomY(), world.getTopYInclusive());
+        if (y < world.getBottomY() || y >= world.getTopY()) {
+            return String.format("无法获取: 坐标Y=%d超出世界高度范围 [%d, %d]", y, world.getBottomY(), world.getTopY() - 1);
         }
 
         BlockPos pos = new BlockPos(x, y, z);
@@ -247,7 +247,7 @@ public class ToolHandler {
 
         // Clamp Y to world bounds
         minY = Math.max(minY, world.getBottomY());
-        maxY = Math.min(maxY, world.getTopYInclusive());
+        maxY = Math.min(maxY, world.getTopY() - 1);
 
         HashMap<String, Integer> counts = new HashMap<>();
         int skippedChunks = 0;

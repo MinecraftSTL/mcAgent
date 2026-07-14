@@ -41,7 +41,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     // ModMenu (optional, compile-only)
-    modCompileOnly "com.terraformersmc:modmenu:14.0.0-beta.1"
+    modCompileOnly "com.terraformersmc:modmenu:11.0.3"
 
     // DashScope SDK for Qwen realtime ASR/TTS (with transitive deps bundled)
     implementation("com.alibaba:dashscope-sdk-java:2.22.18") {

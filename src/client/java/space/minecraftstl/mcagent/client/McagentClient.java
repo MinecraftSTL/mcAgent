@@ -17,7 +17,6 @@ import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +57,7 @@ public class McagentClient implements ClientModInitializer {
         McagentConfig.load();
 
         voiceKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-                "key.mcagent.voice", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_V, KeyBinding.Category.create(Identifier.of("mcagent", "mcagent"))
+                "key.mcagent.voice", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.category.mcagent.mcagent"
         ));
 
         HudRenderCallback.EVENT.register(hudRenderer);

@@ -27,7 +27,7 @@ public class LlmClient {
     public record QueuedMessage(String type, String textContent, byte[] audioData, String playerContext) {}
 
     private static final String TOOL_SYSTEM_PROMPT = """
-            你是一个Minecraft Java版 1.21.10游戏助手AI。玩家通过语音向你发出指令，你需要调用工具来执行操作。
+            你是一个Minecraft Java版 1.21.1游戏助手AI。玩家通过语音向你发出指令，你需要调用工具来执行操作。
             所有命令以玩家身份通过客户端发送到服务端执行（相当于玩家在聊天栏输入）；命令是否可执行按服务端命令语义判断，不以客户端是否已加载目标区块、是否可见、是否在视野内为准。
 
             可用工具：
@@ -234,7 +234,7 @@ public class LlmClient {
                 mc.world.getRegistryKey().getValue().toString(),
                 mc.world.getTimeOfDay(),
                 mc.world.getBottomY(),
-                mc.world.getTopYInclusive(),
+                mc.world.getTopY() - 1,
                 player.getUuidAsString(),
                 player.getName().getString(),
                 player.getX(), player.getY(), player.getZ(),

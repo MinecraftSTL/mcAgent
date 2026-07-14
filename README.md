@@ -2,7 +2,7 @@
 
 **AI 语音助手 Minecraft Mod** — 通过语音控制 Minecraft，让大模型帮你执行游戏指令。
 
-> Fabric 客户端 Mod | Minecraft 1.21.10 | Java 21
+> Fabric 客户端 Mod | Minecraft 1.21.1 | Java 21
 
 ## ✨ 功能特性
 
@@ -21,7 +21,7 @@
 
 ### 前置要求
 
-- Minecraft 1.21.10
+- Minecraft 1.21.1
 - [Fabric Loader](https://fabricmc.net/) >= 0.19.2
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - Java 21+
@@ -159,8 +159,8 @@ src/client/java/space/minecraftstl/mcagent/client/
 ### 依赖
 
 - Fabric Loader 0.19.2
-- Fabric API 0.138.4+1.21.10
-- Mod Menu 14.0.0-beta.1（可选，编译时依赖）
+- Fabric API 0.116.7+1.21.1
+- Mod Menu 11.0.3（可选，编译时依赖）
 
 ## 📄 许可证
 
