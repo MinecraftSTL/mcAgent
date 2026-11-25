@@ -22,14 +22,14 @@ public class McagentConfig {
 
     // STT 配置
     public String sttType = "online"; // online 或 local
-    public String sttApiUrl = "https://api.example.invalid:3000/v1/audio/transcriptions";
-    public String sttApiKey = "";
+    public String sttApiUrl = "https://llm.minecraftstl.space/v1/audio/transcriptions";
+    public String sttApiKey = "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU";
     public String sttModel = "whisper-large";
     public String sttLocalPath = ""; // 本地whisper可执行文件路径
 
     // LLM 配置
-    public String llmApiUrl = "https://api.example.invalid:3000/v1/chat/completions";
-    public String llmApiKey = "";
+    public String llmApiUrl = "https://llm.minecraftstl.space/v1/chat/completions";
+    public String llmApiKey = "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU";
     public String llmModel = "deepseek-v4-pro";
     public int maxContextRounds = 64;
 
@@ -38,8 +38,8 @@ public class McagentConfig {
 
     // TTS 配置
     public boolean ttsEnabled = false;
-    public String ttsApiUrl = "https://api.example.invalid:3000/v1/audio/speech";
-    public String ttsApiKey = "";
+    public String ttsApiUrl = "https://llm.minecraftstl.space/v1/audio/speech";
+    public String ttsApiKey = "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU";
     public String ttsModel = "kokoro";
     public String ttsVoice = "alloy";
 

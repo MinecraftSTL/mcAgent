@@ -77,17 +77,23 @@
   "keyBind": "key.keyboard.v",
 
   "sttType": "online",
-  "sttApiUrl": "https://api.openai.com/v1/audio/transcriptions",
-  "sttApiKey": "your-api-key",
-  "sttModel": "whisper-1",
+  "sttApiUrl": "https://llm.minecraftstl.space/v1/audio/transcriptions",
+  "sttApiKey": "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU",
+  "sttModel": "whisper-large",
   "sttLocalPath": "",
 
-  "llmApiUrl": "https://api.openai.com/v1/chat/completions",
-  "llmApiKey": "your-api-key",
-  "llmModel": "gpt-4o",
+  "llmApiUrl": "https://llm.minecraftstl.space/v1/chat/completions",
+  "llmApiKey": "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU",
+  "llmModel": "deepseek-v4-pro",
   "maxContextRounds": 64,
 
   "systemPrompt": "你是我的Minecraft助手，帮我执行各种游戏操作。请用简体中文回复。",
+
+  "ttsEnabled": false,
+  "ttsApiUrl": "https://llm.minecraftstl.space/v1/audio/speech",
+  "ttsApiKey": "sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU",
+  "ttsModel": "kokoro",
+  "ttsVoice": "alloy",
 
   "silenceThreshold": 500,
   "maxSilenceMs": 3000,
@@ -95,28 +101,36 @@
 }
 ```
 
-### ⚠️ 关于默认 API Key
+### ⚠️ 关于默认 API 地址与 Key
 
-配置文件中预置的 API Key 为**限期限量的测试用 Key**，仅供体验和测试使用。该 Key 可能随时过期或达到用量上限，届时将无法正常使用。如需测试请尽早完成，过期后需自行配置 STT 和 LLM 的 API 地址与 Key。
+- **默认 API 地址**：`https://llm.minecraftstl.space`（OpenAI 兼容格式，STT / LLM / TTS 三项服务共用同一网关）
+- **默认 API Key**：`sk-1LzTY1O6SGkHWK4PY5fvDceA4wrETMwduupydNVyOwsdNfXU`
 
-> **测试用 API Key 已停止提供**，配置文件中不再预置可用 Key，请自行配置 STT 与 LLM 的 API 地址与 Key。
+配置文件中预置的 API Key 为**限期限量的测试用 Key**，仅供体验和测试使用，可能随时过期或达到用量上限。如需长期使用，请自行配置 STT、LLM 与 TTS 的 API 地址与 Key。
+
+> 该 Key 为公开的测试 Key，请勿用于生产环境；如已失效，请在 `.minecraft/config/mcagent.json`（或 Mod Menu 配置界面）中替换为自己申请的 Key。
 
 ### 配置说明
 
-| 配置项 | 说明 |
+| 配置项 | 默认值 / 说明 |
 |--------|------|
 | `recordingMode` | 录音模式：`push_to_talk` / `push_to_send` / `toggle` |
 | `voiceMode` | 语音处理模式：`stt_then_llm`（先转文字再发 LLM）/ `direct_audio`（直接发音频） |
 | `sttType` | STT 类型：`online`（在线 API）/ `local`（本地 Whisper） |
-| `sttApiUrl` | STT API 地址（兼容 OpenAI Whisper API 格式） |
-| `sttApiKey` | STT API Key |
-| `sttModel` | STT 模型名称 |
+| `sttApiUrl` | STT API 地址（兼容 OpenAI Whisper API 格式），默认 `https://llm.minecraftstl.space/v1/audio/transcriptions` |
+| `sttApiKey` | STT API Key，默认使用预置测试 Key |
+| `sttModel` | STT 模型名称，默认 `whisper-large` |
 | `sttLocalPath` | 本地 Whisper 可执行文件路径（`sttType` 为 `local` 时使用） |
-| `llmApiUrl` | LLM API 地址（兼容 OpenAI Chat Completions 格式） |
-| `llmApiKey` | LLM API Key |
-| `llmModel` | LLM 模型名称 |
-| `maxContextRounds` | 最大上下文保留轮数 |
+| `llmApiUrl` | LLM API 地址（兼容 OpenAI Chat Completions 格式），默认 `https://llm.minecraftstl.space/v1/chat/completions` |
+| `llmApiKey` | LLM API Key，默认使用预置测试 Key |
+| `llmModel` | LLM 模型名称，默认 `deepseek-v4-pro` |
+| `maxContextRounds` | 最大上下文保留轮数，默认 `64` |
 | `systemPrompt` | 自定义系统提示词（工具调用提示词会自动拼接在前面） |
+| `ttsEnabled` | 是否启用 TTS 语音合成，默认 `false` |
+| `ttsApiUrl` | TTS API 地址（兼容 OpenAI Audio Speech 格式），默认 `https://llm.minecraftstl.space/v1/audio/speech` |
+| `ttsApiKey` | TTS API Key，默认使用预置测试 Key |
+| `ttsModel` | TTS 模型名称，默认 `kokoro` |
+| `ttsVoice` | TTS 音色，默认 `alloy` |
 | `silenceThreshold` | 静音检测阈值（音频振幅均值） |
 | `maxSilenceMs` | 最大静音时长（ms），超过后自动截断 |
 | `minSpeechMs` | 最小有效语音/按键时长（ms），低于此值视为误触 |
